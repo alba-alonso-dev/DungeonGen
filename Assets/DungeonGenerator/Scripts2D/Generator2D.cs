@@ -91,20 +91,46 @@ public class Generator2D : MonoBehaviour
     HashSet<Prim.Edge> selectedEdges;
     Room smallestRoom;
 
+    public int Seed { get => ramdomSeed; }
+    public bool IsGenerated { get => mapObject != null; }
+
+    // Centro y tamaño del mapa en coordenadas de mundo (ya escalado)
+    public Vector3 MapCenter { get => new Vector3(size.x, 0, size.y) * (0.5f * mapMultiplier); }
+    public Vector3 MapSize { get => new Vector3(size.x, 0, size.y) * mapMultiplier; }
+
+    // Posición de spawn (centro de la sala más pequeña) en coordenadas de mundo
+    public Vector3 SpawnPosition { get; private set; }
+
     void Start()
     {
-        // Create the empty GameObject with the name "map_seedNum"
-        mapObject = new GameObject("map_" + ramdomSeed);
-
-        parentTransform = mapObject.transform;
-        //parentTransform.localScale = new Vector3(mapMultiplier, mapMultiplier, mapMultiplier);
-
-        // Optionally, you can call a method to generate the map (if needed)
-        Generate();
+        Generate(ramdomSeed);
     }
 
-    void Generate()
+    // Borra el mapa actual. Destroy es diferido: hay que esperar un frame antes de
+    // generar otro para que el bake del NavMesh no recoja la geometría antigua.
+    public void ClearMap()
     {
+        if (mapObject != null)
+        {
+            Destroy(mapObject);
+            mapObject = null;
+        }
+
+        // Cubos de debug
+        foreach (Transform child in transform)
+        {
+            Destroy(child.gameObject);
+        }
+    }
+
+    public void Generate(int seed)
+    {
+        ramdomSeed = seed;
+
+        // Create the empty GameObject with the name "map_seedNum"
+        mapObject = new GameObject("map_" + ramdomSeed);
+        parentTransform = mapObject.transform;
+
         random = new Random(ramdomSeed);
         grid = new Grid2D<CellType>(size, Vector2Int.zero);
         rooms = new List<Room>();
@@ -112,24 +138,28 @@ public class Generator2D : MonoBehaviour
         Triangulate();
         CreateHallways();
 
-        grid.Print();
+        if (debug)
+            grid.Print();
 
         PathfindHallways();
 
         //debug
         DrawSpawnRoom();
 
-        grid.Print();
+        if (debug)
+            grid.Print();
 
         //Parte visible
         BuildLevel();
+
+        // Escalar antes del bake para que el NavMesh coincida con la geometría final
+        parentTransform.localScale = new Vector3(mapMultiplier, mapMultiplier, mapMultiplier);
+
         PlaceNavMesh();
 
         //PlaceLights();
 
         PlacePlayer();
-
-        parentTransform.localScale = new Vector3(mapMultiplier, mapMultiplier, mapMultiplier);
     }
 
     private void PlaceNavMesh()
@@ -720,13 +750,6 @@ public class Generator2D : MonoBehaviour
     }
     private void PlacePlayer()
     {
-        // Verificar si el prefab del jugador está definido
-        if (playerPrefab == null)
-        {
-            Debug.LogWarning("Player prefab is null. Cannot place player.");
-            return;
-        }
-
         // Verificar si la habitación más pequeña está definida
         if (smallestRoom == null)
         {
@@ -740,8 +763,16 @@ public class Generator2D : MonoBehaviour
             smallestRoom.bounds.y + smallestRoom.bounds.height / 2
         );
 
+        SpawnPosition = parentTransform.TransformPoint(new Vector3(center.x, 0, center.y));
+
+        // Verificar si el prefab del jugador está definido
+        if (playerPrefab == null)
+        {
+            return;
+        }
+
         // Instanciar al jugador en el centro de la habitación más pequeña
-        Instantiate(playerPrefab, new Vector3(center.x, 0.5f, center.y), Quaternion.identity, parentTransform);
+        Instantiate(playerPrefab, SpawnPosition + Vector3.up * (0.5f * mapMultiplier), Quaternion.identity, parentTransform);
 
         Debug.Log($"Player placed at room center: {center}");
     }

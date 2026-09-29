@@ -1,0 +1,159 @@
+using System.Collections;
+using UnityEngine;
+
+// Panel de la demo web: semilla, regenerar y cambio de modo de cámara.
+// Se usa IMGUI para no depender de Canvas/EventSystem en la escena.
+public class DungeonDemoUI : MonoBehaviour
+{
+    [SerializeField]
+    Generator2D generator;
+    [SerializeField]
+    DungeonDemoCamera demoCamera;
+    [SerializeField]
+    string title = "Dungeon Generator";
+
+    const int PanelWidth = 260;
+
+    static Rect panelRect;
+    static float uiScale = 1f;
+
+    // true mientras el campo de semilla tiene el foco (para no mover la cámara al escribir)
+    public static bool IsTyping { get; private set; }
+
+    string seedText;
+    bool generating;
+    bool showHelp = true;
+
+    // position en coordenadas de pantalla de Input (origen abajo a la izquierda)
+    public static bool IsPointerOverUI(Vector2 position)
+    {
+        Vector2 guiPosition = new Vector2(position.x, Screen.height - position.y) / uiScale;
+        return panelRect.Contains(guiPosition);
+    }
+
+    void Awake()
+    {
+        if (generator == null)
+            generator = FindObjectOfType<Generator2D>();
+        if (demoCamera == null)
+            demoCamera = FindObjectOfType<DungeonDemoCamera>();
+    }
+
+    void Start()
+    {
+        if (generator != null)
+            seedText = generator.Seed.ToString();
+    }
+
+    void Update()
+    {
+        if (generator == null || generating || IsTyping)
+            return;
+
+        if (Input.GetKeyDown(KeyCode.R))
+            GenerateRandom();
+
+        if (Input.GetKeyDown(KeyCode.Tab) && demoCamera != null)
+            demoCamera.ToggleMode();
+
+        if (Input.GetKeyDown(KeyCode.H))
+            showHelp = !showHelp;
+    }
+
+    void GenerateRandom()
+    {
+        int seed = Random.Range(0, 1000000);
+        seedText = seed.ToString();
+        StartCoroutine(Regenerate(seed));
+    }
+
+    IEnumerator Regenerate(int seed)
+    {
+        generating = true;
+
+        // Un frame para que se vea "Generando..." antes del parón
+        yield return null;
+
+        generator.ClearMap();
+
+        // Destroy es diferido: esperar a que el mapa antiguo desaparezca antes del bake del NavMesh
+        yield return null;
+
+        generator.Generate(seed);
+
+        if (demoCamera != null)
+            demoCamera.ResetView();
+
+        generating = false;
+    }
+
+    void OnGUI()
+    {
+        if (generator == null)
+            return;
+
+        uiScale = Mathf.Clamp(Screen.height / 720f, 1f, 2f);
+        GUI.matrix = Matrix4x4.Scale(new Vector3(uiScale, uiScale, 1f));
+
+        float height = showHelp ? 250f : 150f;
+        panelRect = new Rect(10f, 10f, PanelWidth, height);
+
+        GUILayout.BeginArea(panelRect, GUI.skin.box);
+        GUILayout.Label(title, GUI.skin.box);
+
+        GUI.enabled = !generating;
+
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("Semilla", GUILayout.Width(55f));
+        GUI.SetNextControlName("SeedField");
+        seedText = GUILayout.TextField(seedText ?? "", 9);
+        GUILayout.EndHorizontal();
+
+        bool submit = Event.current.type == EventType.KeyDown
+            && (Event.current.keyCode == KeyCode.Return || Event.current.keyCode == KeyCode.KeypadEnter)
+            && GUI.GetNameOfFocusedControl() == "SeedField";
+
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("Generar") || submit)
+        {
+            if (int.TryParse(seedText, out int seed))
+                StartCoroutine(Regenerate(seed));
+            GUI.FocusControl(null);
+        }
+        if (GUILayout.Button("Aleatoria (R)"))
+        {
+            GenerateRandom();
+            GUI.FocusControl(null);
+        }
+        GUILayout.EndHorizontal();
+
+        if (demoCamera != null)
+        {
+            bool explore = demoCamera.CurrentMode == DungeonDemoCamera.Mode.Explore;
+            if (GUILayout.Button(explore ? "Vista general (Tab)" : "Explorar (Tab)"))
+            {
+                demoCamera.ToggleMode();
+                GUI.FocusControl(null);
+            }
+        }
+
+        GUI.enabled = true;
+
+        if (generating)
+        {
+            GUILayout.Label("Generando...");
+        }
+        else if (showHelp)
+        {
+            bool explore = demoCamera != null && demoCamera.CurrentMode == DungeonDemoCamera.Mode.Explore;
+            GUILayout.Label(explore
+                ? "WASD / flechas: andar\nShift: correr\nArrastrar: mirar"
+                : "Arrastrar: orbitar\nWASD / botón central: desplazar\nRueda / pellizco: zoom");
+            GUILayout.Label("H: ocultar ayuda");
+        }
+
+        GUILayout.EndArea();
+
+        IsTyping = GUI.GetNameOfFocusedControl() == "SeedField";
+    }
+}

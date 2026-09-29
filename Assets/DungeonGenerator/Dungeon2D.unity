@@ -132,6 +132,7 @@ GameObject:
   m_Component:
   - component: {fileID: 203877985}
   - component: {fileID: 203877984}
+  - component: {fileID: 203877986}
   m_Layer: 0
   m_Name: Generator
   m_TagString: Untagged
@@ -164,13 +165,28 @@ MonoBehaviour:
   pillarPrefab: {fileID: 16038835297913163, guid: ac5871406adca694fa0b705b57be598d, type: 3}
   lampPrefab: {fileID: 8060405944448375545, guid: 14194ae18829a7946ae595cd20fd576d, type: 3}
   generateCeilling: 1
-  playerPrefab: {fileID: 1061073680}
+  playerPrefab: {fileID: 0}
   debug: 0
   cubePrefab: {fileID: 7415050535990569633, guid: 3fb4ddafbd160274ba8f07a1cf8cd5ee, type: 3}
   redMaterial: {fileID: 2100000, guid: 71673d9873285904ab00282788add27f, type: 2}
   blueMaterial: {fileID: 2100000, guid: bd79999920190574a94044b2acad7316, type: 2}
   greenMaterial: {fileID: 2100000, guid: 13cd47135277903479d4b55421faa42e, type: 2}
   purpleMaterial: {fileID: 2100000, guid: ad62d532d4b8e1642ad5f98b775c9530, type: 2}
+--- !u!114 &203877986
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 203877983}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a5567b42c1fa40cf92b7993be72cc145, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  generator: {fileID: 203877984}
+  demoCamera: {fileID: 1061073684}
+  title: Dungeon Generator
 --- !u!4 &203877985
 Transform:
   m_ObjectHideFlags: 0
@@ -314,6 +330,7 @@ GameObject:
   - component: {fileID: 1061073683}
   - component: {fileID: 1061073682}
   - component: {fileID: 1061073681}
+  - component: {fileID: 1061073684}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -395,6 +412,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
+--- !u!114 &1061073684
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1061073680}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 433c83af96854bbc98cedad0e6157098, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  generator: {fileID: 203877984}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
