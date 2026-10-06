@@ -23,6 +23,7 @@ public class DungeonDemoUI : MonoBehaviour
     string seedText;
     bool generating;
     bool showHelp = true;
+    float copiedUntil;
 
     // position en coordenadas de pantalla de Input (origen abajo a la izquierda)
     public static bool IsPointerOverUI(Vector2 position)
@@ -37,12 +38,19 @@ public class DungeonDemoUI : MonoBehaviour
             generator = FindObjectOfType<Generator2D>();
         if (demoCamera == null)
             demoCamera = FindObjectOfType<DungeonDemoCamera>();
+
+        // ?seed=1234 en la URL: se aplica en Awake, antes de que Generator2D genere en Start
+        if (generator != null && DungeonDemoWeb.TryGetSeedFromUrl(out int urlSeed))
+            generator.Seed = urlSeed;
     }
 
     void Start()
     {
         if (generator != null)
+        {
             seedText = generator.Seed.ToString();
+            DungeonDemoWeb.UpdateUrl(generator.Seed);
+        }
     }
 
     void Update()
@@ -79,7 +87,11 @@ public class DungeonDemoUI : MonoBehaviour
         // Destroy es diferido: esperar a que el mapa antiguo desaparezca antes del bake del NavMesh
         yield return null;
 
+        // Liberar las mallas combinadas por el static batching del mapa anterior
+        yield return Resources.UnloadUnusedAssets();
+
         generator.Generate(seed);
+        DungeonDemoWeb.UpdateUrl(seed);
 
         if (demoCamera != null)
             demoCamera.ResetView();
@@ -95,7 +107,7 @@ public class DungeonDemoUI : MonoBehaviour
         uiScale = Mathf.Clamp(Screen.height / 720f, 1f, 2f);
         GUI.matrix = Matrix4x4.Scale(new Vector3(uiScale, uiScale, 1f));
 
-        float height = showHelp ? 250f : 150f;
+        float height = showHelp ? 275f : 175f;
         panelRect = new Rect(10f, 10f, PanelWidth, height);
 
         GUILayout.BeginArea(panelRect, GUI.skin.box);
@@ -135,6 +147,13 @@ public class DungeonDemoUI : MonoBehaviour
                 demoCamera.ToggleMode();
                 GUI.FocusControl(null);
             }
+        }
+
+        if (GUILayout.Button(Time.unscaledTime < copiedUntil ? "¡Enlace copiado!" : "Copiar enlace"))
+        {
+            DungeonDemoWeb.CopyToClipboard(DungeonDemoWeb.GetShareUrl(generator.Seed));
+            copiedUntil = Time.unscaledTime + 2f;
+            GUI.FocusControl(null);
         }
 
         GUI.enabled = true;

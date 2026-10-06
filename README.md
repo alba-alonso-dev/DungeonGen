@@ -9,6 +9,9 @@ La escena `Assets/DungeonGenerator/Dungeon2D.unity` está preparada como demo:
 - **Vista general**: arrastrar para orbitar, WASD o botón central para desplazar, rueda o pellizco para zoom.
 - **Explorar (Tab)**: primera persona desde la sala de inicio. WASD/flechas para andar, Shift para correr, arrastrar para mirar. Se camina sobre el NavMesh generado, que hace de colisión.
 - **H**: mostrar/ocultar la ayuda.
+- **Copiar enlace**: copia la URL de la página con `?seed=<semilla>`. Al abrir ese enlace se genera la misma mazmorra. La barra de direcciones también se actualiza con la semilla actual.
+
+> En itch.io el juego corre dentro de un iframe, así que los parámetros de la página de itch no llegan al juego. El enlace copiado apunta a la página del propio build (html.itch.zone), que sí funciona. En hostings propios (GitHub Pages, Netlify...) funciona directamente.
 
 ### Compilar para web
 

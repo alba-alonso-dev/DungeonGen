@@ -43,6 +43,9 @@ public class Generator2D : MonoBehaviour
     Vector2Int roomMinSize;
     [SerializeField]
     float mapMultiplier = 1;
+    [SerializeField]
+    [Tooltip("Agrupa la geometría del mapa en pocos draw calls (importante en WebGL)")]
+    bool staticBatching = true;
 
     [Header("Map Tiles")]
     [Space(1)]
@@ -91,7 +94,7 @@ public class Generator2D : MonoBehaviour
     HashSet<Prim.Edge> selectedEdges;
     Room smallestRoom;
 
-    public int Seed { get => ramdomSeed; }
+    public int Seed { get => ramdomSeed; set => ramdomSeed = value; }
     public bool IsGenerated { get => mapObject != null; }
 
     // Centro y tamaño del mapa en coordenadas de mundo (ya escalado)
@@ -156,6 +159,11 @@ public class Generator2D : MonoBehaviour
         parentTransform.localScale = new Vector3(mapMultiplier, mapMultiplier, mapMultiplier);
 
         PlaceNavMesh();
+
+        // Después del bake del NavMesh y antes de colocar al jugador (que no debe quedar estático).
+        // Requiere mallas con Read/Write activado (las de StylizedHandPaintedDungeon lo tienen).
+        if (staticBatching)
+            StaticBatchingUtility.Combine(mapObject);
 
         //PlaceLights();
 
