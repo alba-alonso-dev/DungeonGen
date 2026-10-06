@@ -10,9 +10,11 @@ public class DungeonDemoUI : MonoBehaviour
     [SerializeField]
     DungeonDemoCamera demoCamera;
     [SerializeField]
+    DungeonAlgorithmView algorithmView;
+    [SerializeField]
     string title = "Dungeon Generator";
 
-    const int PanelWidth = 260;
+    const int PanelWidth = 300;
 
     static Rect panelRect;
     static float uiScale = 1f;
@@ -24,6 +26,7 @@ public class DungeonDemoUI : MonoBehaviour
     bool generating;
     bool showHelp = true;
     float copiedUntil;
+    GUIStyle wrappedLabel;
 
     // position en coordenadas de pantalla de Input (origen abajo a la izquierda)
     public static bool IsPointerOverUI(Vector2 position)
@@ -38,6 +41,8 @@ public class DungeonDemoUI : MonoBehaviour
             generator = FindObjectOfType<Generator2D>();
         if (demoCamera == null)
             demoCamera = FindObjectOfType<DungeonDemoCamera>();
+        if (algorithmView == null)
+            algorithmView = FindObjectOfType<DungeonAlgorithmView>();
 
         // ?seed=1234 en la URL: se aplica en Awake, antes de que Generator2D genere en Start
         if (generator != null && DungeonDemoWeb.TryGetSeedFromUrl(out int urlSeed))
@@ -61,8 +66,25 @@ public class DungeonDemoUI : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.R))
             GenerateRandom();
 
-        if (Input.GetKeyDown(KeyCode.Tab) && demoCamera != null)
+        bool viewingAlgorithm = algorithmView != null && algorithmView.IsActive;
+
+        if (Input.GetKeyDown(KeyCode.Tab) && demoCamera != null && !viewingAlgorithm)
             demoCamera.ToggleMode();
+
+        if (algorithmView != null)
+        {
+            if (Input.GetKeyDown(KeyCode.V))
+            {
+                if (viewingAlgorithm)
+                    algorithmView.Hide();
+                else
+                    algorithmView.Show(DungeonAlgorithmView.Stage.Rooms);
+            }
+            else if (viewingAlgorithm && Input.GetKeyDown(KeyCode.Space))
+                algorithmView.Next();
+            else if (viewingAlgorithm && Input.GetKeyDown(KeyCode.Backspace))
+                algorithmView.Previous();
+        }
 
         if (Input.GetKeyDown(KeyCode.H))
             showHelp = !showHelp;
@@ -94,7 +116,11 @@ public class DungeonDemoUI : MonoBehaviour
         DungeonDemoWeb.UpdateUrl(seed);
 
         if (demoCamera != null)
+        {
             demoCamera.ResetView();
+            if (algorithmView != null && algorithmView.IsActive)
+                demoCamera.LookFromAbove();
+        }
 
         generating = false;
     }
@@ -107,7 +133,14 @@ public class DungeonDemoUI : MonoBehaviour
         uiScale = Mathf.Clamp(Screen.height / 720f, 1f, 2f);
         GUI.matrix = Matrix4x4.Scale(new Vector3(uiScale, uiScale, 1f));
 
-        float height = showHelp ? 275f : 175f;
+        bool viewingAlgorithm = algorithmView != null && algorithmView.IsActive;
+
+        float height = 205f;
+        if (viewingAlgorithm)
+            height += 160f;
+        else if (showHelp)
+            height += 100f;
+
         panelRect = new Rect(10f, 10f, PanelWidth, height);
 
         GUILayout.BeginArea(panelRect, GUI.skin.box);
@@ -142,9 +175,23 @@ public class DungeonDemoUI : MonoBehaviour
         if (demoCamera != null)
         {
             bool explore = demoCamera.CurrentMode == DungeonDemoCamera.Mode.Explore;
+            GUI.enabled = !generating && !viewingAlgorithm;
             if (GUILayout.Button(explore ? "Vista general (Tab)" : "Explorar (Tab)"))
             {
                 demoCamera.ToggleMode();
+                GUI.FocusControl(null);
+            }
+            GUI.enabled = !generating;
+        }
+
+        if (algorithmView != null)
+        {
+            if (GUILayout.Button(viewingAlgorithm ? "Ver mazmorra (V)" : "Ver algoritmo paso a paso (V)"))
+            {
+                if (viewingAlgorithm)
+                    algorithmView.Hide();
+                else
+                    algorithmView.Show(DungeonAlgorithmView.Stage.Rooms);
                 GUI.FocusControl(null);
             }
         }
@@ -162,13 +209,33 @@ public class DungeonDemoUI : MonoBehaviour
         {
             GUILayout.Label("Generando...");
         }
+        else if (viewingAlgorithm)
+        {
+            DungeonAlgorithmView.Stage stage = algorithmView.CurrentStage;
+            GUILayout.Label(DungeonAlgorithmView.StageTitle(stage), GUI.skin.box);
+
+            if (wrappedLabel == null)
+                wrappedLabel = new GUIStyle(GUI.skin.label) { wordWrap = true };
+            GUILayout.Label(DungeonAlgorithmView.StageDescription(stage), wrappedLabel);
+
+            GUILayout.FlexibleSpace();
+            GUILayout.BeginHorizontal();
+            GUI.enabled = stage > DungeonAlgorithmView.Stage.Rooms;
+            if (GUILayout.Button("< Anterior"))
+                algorithmView.Previous();
+            GUI.enabled = true;
+            if (GUILayout.Button(stage == DungeonAlgorithmView.Stage.Hallways ? "Resultado >" : "Siguiente >"))
+                algorithmView.Next();
+            GUILayout.EndHorizontal();
+            GUILayout.Label("Espacio / Retroceso: avanzar / volver");
+        }
         else if (showHelp)
         {
             bool explore = demoCamera != null && demoCamera.CurrentMode == DungeonDemoCamera.Mode.Explore;
             GUILayout.Label(explore
                 ? "WASD / flechas: andar\nShift: correr\nArrastrar: mirar"
                 : "Arrastrar: orbitar\nWASD / botón central: desplazar\nRueda / pellizco: zoom");
-            GUILayout.Label("H: ocultar ayuda");
+            GUILayout.Label("V: algoritmo paso a paso   H: ocultar ayuda");
         }
 
         GUILayout.EndArea();

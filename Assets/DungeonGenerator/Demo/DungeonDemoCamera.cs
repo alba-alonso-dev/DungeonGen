@@ -120,6 +120,20 @@ public class DungeonDemoCamera : MonoBehaviour
         SetMode(Mode.Overview);
     }
 
+    // Vista cenital de todo el mapa (para la visualización del algoritmo)
+    public void LookFromAbove()
+    {
+        if (generator == null)
+            return;
+
+        Vector3 mapSize = generator.MapSize;
+        pivot = generator.MapCenter;
+        distance = Mathf.Max(mapSize.x, mapSize.z) * 1.05f;
+        yaw = 0f;
+        pitch = maxPitch;
+        ApplyOrbit();
+    }
+
     public void SetMode(Mode mode)
     {
         if (mode == Mode.Explore && !EnterExplore())

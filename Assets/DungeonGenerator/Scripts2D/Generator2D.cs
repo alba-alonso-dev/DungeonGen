@@ -6,6 +6,20 @@ using Random = System.Random;
 
 public class Generator2D : MonoBehaviour
 {
+    // Datos intermedios de la última generación, para visualizar el algoritmo paso a paso.
+    // Coordenadas en celdas del grid (el centro de la celda (x, y) está en (x, y)).
+    public class GenerationTrace
+    {
+        public List<RectInt> Rooms = new List<RectInt>();
+        public RectInt SpawnRoom;
+        public List<Vector2[]> DelaunayEdges = new List<Vector2[]>();
+        public List<Vector2[]> MstEdges = new List<Vector2[]>();
+        public List<Vector2[]> ExtraEdges = new List<Vector2[]>();
+        // Celdas de pasillo de cada camino A*, en el orden en que se trazaron
+        public List<List<Vector2Int>> HallwayPaths = new List<List<Vector2Int>>();
+        public List<Vector2Int> Doors = new List<Vector2Int>();
+    }
+
     enum CellType
     {
         None,
@@ -104,6 +118,21 @@ public class Generator2D : MonoBehaviour
     // Posición de spawn (centro de la sala más pequeña) en coordenadas de mundo
     public Vector3 SpawnPosition { get; private set; }
 
+    public Vector2Int GridSize { get => size; }
+    public GenerationTrace Trace { get; private set; }
+
+    // Celda del grid (puede ser fraccionaria) a coordenadas de mundo
+    public Vector3 GridToWorld(Vector2 cell, float height = 0f)
+    {
+        return new Vector3(cell.x, height, cell.y) * mapMultiplier;
+    }
+
+    public void SetMapVisible(bool visible)
+    {
+        if (mapObject != null)
+            mapObject.SetActive(visible);
+    }
+
     void Start()
     {
         Generate(ramdomSeed);
@@ -137,7 +166,12 @@ public class Generator2D : MonoBehaviour
         random = new Random(ramdomSeed);
         grid = new Grid2D<CellType>(size, Vector2Int.zero);
         rooms = new List<Room>();
+        Trace = new GenerationTrace();
         PlaceRooms();
+
+        foreach (var room in rooms)
+            Trace.Rooms.Add(room.bounds);
+        Trace.SpawnRoom = smallestRoom.bounds;
         Triangulate();
         CreateHallways();
 
@@ -322,6 +356,9 @@ public class Generator2D : MonoBehaviour
         }
 
         delaunay = Delaunay2D.Triangulate(vertices);
+
+        foreach (var edge in delaunay.Edges)
+            Trace.DelaunayEdges.Add(TraceEdge(edge.U, edge.V));
     }
 
     void CreateHallways()
@@ -339,13 +376,24 @@ public class Generator2D : MonoBehaviour
         var remainingEdges = new HashSet<Prim.Edge>(edges);
         remainingEdges.ExceptWith(selectedEdges);
 
+        foreach (var edge in mst)
+            Trace.MstEdges.Add(TraceEdge(edge.U, edge.V));
+
         foreach (var edge in remainingEdges)
         {
             if (random.NextDouble() < 0.125)
             {
                 selectedEdges.Add(edge);
+                Trace.ExtraEdges.Add(TraceEdge(edge.U, edge.V));
             }
         }
+    }
+
+    // Los vértices están en position + size / 2; se pasa a coordenadas de centro de celda
+    Vector2[] TraceEdge(Vertex u, Vertex v)
+    {
+        Vector2 offset = new Vector2(0.5f, 0.5f);
+        return new Vector2[] { (Vector2)u.Position - offset, (Vector2)v.Position - offset };
     }
 
     void PathfindHallways()
@@ -388,6 +436,9 @@ public class Generator2D : MonoBehaviour
 
             if (path != null)
             {
+                List<Vector2Int> traceCells = new List<Vector2Int>();
+                Trace.HallwayPaths.Add(traceCells);
+
                 for (int i = 0; i < path.Count; i++)
                 {
                     var current = path[i];
@@ -421,6 +472,7 @@ public class Generator2D : MonoBehaviour
                     if (grid[curr] == CellType.Hallway)
                     {
                         PlaceHallway(curr);
+                        traceCells.Add(curr);
                     }
 
                     // Verificar si la posición actual es una sala y la siguiente es un pasillo
@@ -431,6 +483,7 @@ public class Generator2D : MonoBehaviour
                         {
                             PlaceDoor(curr);
                             grid[curr] = CellType.Door;  // Asignar 'Door' en la posición donde se coloca la puerta
+                            Trace.Doors.Add(curr);
                         }
                     }
                     else if (grid[next] == CellType.Room && grid[curr] == CellType.Hallway)
@@ -440,6 +493,7 @@ public class Generator2D : MonoBehaviour
                         {
                             PlaceDoor(next);
                             grid[next] = CellType.Door;  // Asignar 'Door' en la posición donde se coloca la puerta
+                            Trace.Doors.Add(next);
                         }
                     }
                 }

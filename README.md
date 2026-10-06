@@ -8,6 +8,14 @@ La escena `Assets/DungeonGenerator/Dungeon2D.unity` está preparada como demo:
 - **Generar / Aleatoria (R)**: regenera la mazmorra con la semilla indicada o una aleatoria.
 - **Vista general**: arrastrar para orbitar, WASD o botón central para desplazar, rueda o pellizco para zoom.
 - **Explorar (Tab)**: primera persona desde la sala de inicio. WASD/flechas para andar, Shift para correr, arrastrar para mirar. Se camina sobre el NavMesh generado, que hace de colisión.
+- **Ver algoritmo paso a paso (V)**: muestra cómo se construye la mazmorra actual, con vista cenital y animación en cada paso:
+  1. Salas aleatorias (la morada es la de inicio).
+  2. Triangulación de Delaunay entre los centros de las salas.
+  3. Árbol de expansión mínima (Prim), en verde.
+  4. Ciclos extra: un 12,5 % de las aristas descartadas, en azul.
+  5. Pasillos trazados con A*, en naranja, y las puertas en verde.
+
+  Espacio / Retroceso para avanzar y volver. Al pasar del último paso se vuelve a la mazmorra.
 - **H**: mostrar/ocultar la ayuda.
 - **Copiar enlace**: copia la URL de la página con `?seed=<semilla>`. Al abrir ese enlace se genera la misma mazmorra. La barra de direcciones también se actualiza con la semilla actual.
 
